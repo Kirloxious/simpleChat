@@ -141,10 +141,6 @@ public class ChatClient extends AbstractClient
     }
   }
 
-  private String getCommandString(String cmd){
-    return cmd.substring(0, 8);
-  }
-
   private String getCommandArgument(String cmd){
     return cmd.substring(9);
   }
