@@ -27,6 +27,11 @@ public class ChatClient extends AbstractClient
    */
   ChatIF clientUI; 
 
+  /**
+   * User login id.
+   */
+  private String loginId;
+
   
   //Constructors ****************************************************
   
@@ -37,12 +42,12 @@ public class ChatClient extends AbstractClient
    * @param port The port number to connect on.
    * @param clientUI The interface type variable.
    */
-  
-  public ChatClient(String host, int port, ChatIF clientUI) 
+  public ChatClient(String loginId, String host, int port, ChatIF clientUI) 
     throws IOException 
   {
     super(host, port); //Call the superclass constructor
     this.clientUI = clientUI;
+    this.loginId = loginId;
     openConnection();
   }
 
@@ -69,8 +74,13 @@ public class ChatClient extends AbstractClient
     try
     {
       if(message.startsWith("#")){
-        handleCommand(message);
+          try {
+            handleCommand(message);
 
+          } catch (Exception e) {
+            clientUI.display("Error handling message. Please enter valid command.");
+          }
+          
       }
       else sendToServer(message);
     }
@@ -82,23 +92,61 @@ public class ChatClient extends AbstractClient
     }
   }
 
-  private void handleCommand(String cmd){
-    switch (cmd) {
-      case "#quit":
-        quit();        
-        break;
-      
-      case "#logoff":
-        
-        break;
-
-
-
-
-      default:
-        break;
+  private void handleCommand(String cmd) throws Exception{
+    
+    if(cmd.equals("#quit")){
+      clientUI.display("Quitting console");
+      quit();
     }
+    else if(cmd.equals("#logoff")){
+      try {
+        this.closeConnection();
+      } catch (IOException e) {
+        clientUI.display("Logoff error. Terminating client.");
+        quit();
+      }
+    }
+    else if(cmd.startsWith("#login")){
+      try {
+        sendToServer(cmd);
+      } catch (IOException e) {
+        clientUI.display("Login error. Terminating client.");
+        quit();
+      }
 
+    }
+    else if(cmd.startsWith("#sethost") && !isConnected()){
+      String param = getCommandArgument(cmd);
+      setHost(param);
+      clientUI.display("Set host to: " + param);
+    }
+    else if(cmd.startsWith("#setport") && !isConnected()){
+      String param = getCommandArgument(cmd);
+      setPort(Integer.parseInt(param));
+      clientUI.display("Set port to: " + param);
+    }
+    else if(cmd.equals("#gethost")){
+      clientUI.display(getHost());
+      
+    }
+    else if(cmd.equals("#getport")){
+      clientUI.display(String.valueOf(getPort()));
+      
+    }
+    else if(isConnected()){
+      clientUI.display("Could not execute command. Client is connected");
+    }
+    else{
+      clientUI.display("Invalid command");
+    }
+  }
+
+  private String getCommandString(String cmd){
+    return cmd.substring(0, 8);
+  }
+
+  private String getCommandArgument(String cmd){
+    return cmd.substring(9);
   }
   
   /**
@@ -139,7 +187,20 @@ public class ChatClient extends AbstractClient
     System.exit(0);
 	}
 
-
+  /**
+	 * Hook method called after a connection has been established. The default
+	 * implementation does nothing. It may be overridden by subclasses to do
+	 * anything they wish.
+	 */
+  @Override
+	protected void connectionEstablished() {
+    try {
+      sendToServer("#login " + this.loginId);
+    } catch (Exception e) {
+      clientUI.display("Error establishing connection. Login failed.");
+      System.exit(0);
+    }
+	}
 
 }
 //End of ChatClient class
